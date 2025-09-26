@@ -1,376 +1,106 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>RBXM / Asset ID → Lua</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #1c1c28;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .container {
-      background: #2a2a3d;
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-      width: 450px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.4);
-    }
-    h1 {
-      font-size: 20px;
-      margin-bottom: 15px;
-      color: #dcdcff;
-    }
-    input, button {
-      width: 100%;
-      margin: 8px 0;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    input {
-      background: #3a3a52;
-      color: white;
-    }
-    button {
-      background: #8b5cf6;
-      color: white;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    button:hover {
-      background: #7c3aed;
-    }
-    textarea {
-      width: 100%;
-      height: 250px;
-      margin-top: 10px;
-      background: #111;
-      color: #0f0;
-      font-family: monospace;
-      font-size: 12px;
-      border-radius: 6px;
-      padding: 10px;
-      resize: none;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asset ID → Lua</title>
+<style>
+body {
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#0d0f18;
+  color:#fff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.container {
+  background:#1a1f2e;
+  padding:30px;
+  border-radius:16px;
+  box-shadow:0 8px 20px rgba(0,0,0,.6);
+  width:340px;
+  text-align:center;
+}
+h1 {
+  font-size:1.4rem;
+  margin-bottom:20px;
+  color:#a78bfa;
+}
+input, button {
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border:none;
+  border-radius:8px;
+  font-size:1rem;
+}
+input {
+  background:#111628;
+  color:#fff;
+}
+button {
+  background:#7c5cff;
+  color:#fff;
+  cursor:pointer;
+  transition:0.2s;
+}
+button:hover {
+  background:#6b4ef5;
+}
+textarea {
+  width:100%;
+  height:150px;
+  margin-top:12px;
+  background:#111628;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:10px;
+  resize:none;
+  font-family:monospace;
+  font-size:0.9rem;
+}
+</style>
 </head>
 <body>
   <div class="container">
-    <h1>Roblox Asset / RBXM → Lua</h1>
-    <input type="text" id="assetId" placeholder="Enter Roblox Asset ID">
-    <button id="convertAsset">Convert Asset ID</button>
-
-    <input type="file" id="rbxmFile" accept=".rbxm,.rbxmx">
-    <button id="convertRbxm">Convert RBXM File</button>
-
-    <button id="downloadBtn">Download Lua</button>
-    <textarea id="output" readonly placeholder="Lua output will appear here..."></textarea>
+    <h1>Asset ID → Lua</h1>
+    <input type="text" id="assetId" placeholder="Enter Asset ID">
+    <button onclick="convert()">Convert</button>
+    <button onclick="downloadLua()">Download Lua</button>
+    <textarea id="output" readonly></textarea>
   </div>
 
-  <script>
-    const assetBtn = document.getElementById("convertAsset");
-    const rbxmBtn = document.getElementById("convertRbxm");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const output = document.getElementById("output");
-
-    function luaEscape(str) {
-      return str.replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g,"\\n");
-    }
-
-    function parseRBXM(xml) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xml, "text/xml");
-
-      let lua = [];
-      let id = 0;
-
-      function parseItem(node, parentName) {
-        let className = node.getAttribute("class") || "Instance";
-        let name = "inst" + (++id);
-        lua.push(`local ${name} = Instance.new("${className}")`);
-
-        node.querySelectorAll(":scope > Properties > *").forEach(prop => {
-          let propName = prop.tagName;
-          let val = prop.textContent;
-
-          if (propName === "string") {
-            lua.push(`${name}.${prop.getAttribute("name")} = "${luaEscape(val)}"`);
-          } else if (propName === "bool") {
-            lua.push(`${name}.${prop.getAttribute("name")} = ${val}`);
-          } else if (propName === "int" || propName === "float" || propName === "double") {
-            lua.push(`${name}.${prop.getAttribute("name")} = ${val}`);
-          } else if (propName === "Content") {
-            lua.push(`${name}.${prop.getAttribute("name")} = "${val}"`);
-          } else if (propName === "BinaryString" && node.getAttribute("class").includes("Script")) {
-            lua.push(`${name}.Source = [[${val}]]`);
-          }
-        });
-
-        if (parentName) {
-          lua.push(`${name}.Parent = ${parentName}`);
-        }
-
-        node.querySelectorAll(":scope > Item").forEach(child => {
-          parseItem(child, name);
-        });
-
-        return name;
-      }
-
-      doc.querySelectorAll("roblox > Item").forEach(item => {
-        parseItem(item, null);
-      });
-
-      return lua.join("\n");
-    }
-
-    assetBtn.onclick = () => {
-      const assetId = document.getElementById("assetId").value.trim();
-      if (!assetId) {
-        alert("Enter an Asset ID!");
-        return;
-      }
-      output.value = `local model = game:GetObjects("rbxassetid://${assetId}")[1]\nmodel.Parent = workspace`;
-    };
-
-    rbxmBtn.onclick = () => {
-      const file = document.getElementById("rbxmFile").files[0];
-      if (!file) {
-        alert("Upload an RBXM/RBXMX file!");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = e => {
-        output.value = parseRBXM(e.target.result);
-      };
-      reader.readAsText(file);
-    };
-
-    downloadBtn.onclick = () => {
-      if (!output.value) {
-        alert("Nothing to download!");
-        return;
-      }
-      const blob = new Blob([output.value], { type: "text/plain" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "Converted.lua";
-      link.click();
-    };
-  </script>
-</body>
-</html>  const m = text.match(/\d{5,}/)
-  return m ? m[0] : null
-}
-
-function makeAssetLua(id){
-  const safeId = id.toString().trim()
-  const lines = []
-  lines.push('local asset = game:GetObjects("rbxassetid://' + safeId + '")[1]')
-  lines.push('if asset then')
-  lines.push('  asset.Parent = workspace')
-  lines.push('end')
-  return lines.join('\n')
-}
-
-function downloadText(filename, text){
-  try{
-    const blob = new Blob([text], {type:'text/plain'})
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    setTimeout(()=> {
-      URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    }, 150)
-    statusEl.textContent = 'downloaded'
-  }catch(e){
-    statusEl.textContent = 'download failed'
+<script>
+function convert() {
+  const id = document.getElementById("assetId").value.trim();
+  if (!id) {
+    alert("Enter an Asset ID");
+    return;
   }
+  const lua = `local model = game:GetObjects("rbxassetid://${id}")[1]
+model.Parent = workspace`;
+  document.getElementById("output").value = lua;
 }
 
-function escapeLuaString(s){
-  if(s.indexOf(']]') === -1){
-    return '[[' + s + ']]'
-  }else{
-    return '"' + s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\r/g,'').replace(/\n/g,'\\n') + '"'
+function downloadLua() {
+  const content = document.getElementById("output").value;
+  if (!content) {
+    alert("Nothing to download. Convert first!");
+    return;
   }
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Asset.lua";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
-
-function sanitizeVar(name, id){
-  name = String(name || 'Instance')
-  name = name.replace(/[^\w]/g,'_')
-  if(/^[0-9]/.test(name)) name = 'N' + name
-  return name + '_' + id
-}
-
-function numText(n){
-  if(isFinite(n)) return +n
-  return 0
-}
-
-function parseVector3(node){
-  const x = parseFloat(node.querySelector('X')?.textContent || node.querySelector('x')?.textContent || '0')
-  const y = parseFloat(node.querySelector('Y')?.textContent || node.querySelector('y')?.textContent || '0')
-  const z = parseFloat(node.querySelector('Z')?.textContent || node.querySelector('z')?.textContent || '0')
-  return 'Vector3.new(' + x + ',' + y + ',' + z + ')'
-}
-
-function parseColor3(node){
-  const r = parseFloat(node.querySelector('r')?.textContent || '0')
-  const g = parseFloat(node.querySelector('g')?.textContent || '0')
-  const b = parseFloat(node.querySelector('b')?.textContent || '0')
-  return 'Color3.new(' + r + ',' + g + ',' + b + ')'
-}
-
-function parseProperties(item, varName, lines, className){
-  const props = item.querySelectorAll(':scope > Properties > *')
-  props.forEach(p=>{
-    const propName = p.getAttribute('name') || p.getAttribute('key') || p.tagName
-    const tag = p.tagName.toLowerCase()
-    if(propName === 'Name') return
-    if(tag === 'string'){
-      const val = p.textContent || ''
-      if(propName === 'Source' || className === 'Script' || className === 'LocalScript' || className === 'ModuleScript'){
-        lines.push(varName + '.Source = ' + escapeLuaString(val))
-      }else{
-        lines.push(varName + '.' + propName + ' = ' + escapeLuaString(val))
-      }
-    }else if(tag === 'protectedstring'){
-      const val = p.textContent || ''
-      if(propName === 'Source' || className === 'Script' || className === 'LocalScript' || className === 'ModuleScript'){
-        lines.push(varName + '.Source = ' + escapeLuaString(val))
-      }else{
-        lines.push(varName + '.' + propName + ' = ' + escapeLuaString(val))
-      }
-    }else if(tag === 'bool'){
-      const v = String(p.textContent).trim().toLowerCase()
-      lines.push(varName + '.' + propName + ' = ' + (v === 'true' ? 'true' : 'false'))
-    }else if(tag === 'int' || tag === 'int32' || tag === 'int64' || tag === 'double' || tag === 'float' || tag === 'number'){
-      const v = parseFloat(p.textContent || '0')
-      lines.push(varName + '.' + propName + ' = ' + (isFinite(v) ? v : 0))
-    }else if(tag === 'vector3'){
-      lines.push(varName + '.' + propName + ' = ' + parseVector3(p))
-    }else if(tag === 'color3'){
-      lines.push(varName + '.' + propName + ' = ' + parseColor3(p))
-    }else if(tag === 'brickcolor'){
-      const txt = (p.textContent || '').trim()
-      if(/^\d+$/.test(txt)){
-        lines.push(varName + '.' + propName + ' = BrickColor.new(' + txt + ')')
-      }else{
-        lines.push(varName + '.' + propName + ' = BrickColor.new(' + escapeLuaString(txt) + ')')
-      }
-    }else{
-    }
-  })
-}
-
-function parseRBXMText(xmlText){
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(xmlText, 'application/xml')
-  const root = doc.documentElement || doc
-  const topItems = []
-  for(let i=0;i<root.childNodes.length;i++){
-    const ch = root.childNodes[i]
-    if(ch.nodeType === 1 && ch.tagName.toLowerCase() === 'item') topItems.push(ch)
-  }
-  let lines = []
-  let idCounter = 0
-  function parseItem(item, parentVar){
-    idCounter++
-    const className = item.getAttribute('class') || 'Model'
-    const nameNode = item.querySelector(':scope > Properties > string[name="Name"], :scope > Properties > ProtectedString[name="Name"]')
-    const displayName = (nameNode ? (nameNode.textContent || '') : className)
-    const varName = sanitizeVar(displayName || className, idCounter)
-    lines.push('local ' + varName + ' = Instance.new("' + className + '")')
-    if(nameNode && (nameNode.textContent || '').trim() !== '') lines.push(varName + '.Name = ' + escapeLuaString(nameNode.textContent))
-    if(parentVar) lines.push(varName + '.Parent = ' + parentVar)
-    else lines.push(varName + '.Parent = workspace')
-    parseProperties(item, varName, lines, className)
-    const children = []
-    for(let i=0;i<item.childNodes.length;i++){
-      const ch = item.childNodes[i]
-      if(ch.nodeType===1 && ch.tagName.toLowerCase() === 'item') children.push(ch)
-    }
-    children.forEach(c=>{
-      parseItem(c, varName)
-    })
-    return varName
-  }
-  topItems.forEach(it=>{
-    parseItem(it, null)
-  })
-  if(lines.length === 0) return ''
-  return lines.join('\n')
-}
-
-convertAssetBtn.addEventListener('click', ()=>{
-  statusEl.textContent = 'converting asset'
-  const id = extractAssetId(assetInput.value)
-  if(!id){
-    statusEl.textContent = 'no valid asset id'
-    return
-  }
-  const lua = makeAssetLua(id)
-  outputEl.value = lua
-  lastFilename = 'ConvertedFromAsset.lua'
-  statusEl.textContent = 'ready'
-})
-
-convertRBXMBtn.addEventListener('click', ()=>{
-  const f = fileInput.files[0]
-  if(!f){
-    statusEl.textContent = 'no file selected'
-    return
-  }
-  const reader = new FileReader()
-  reader.addEventListener('load', (e)=>{
-    try{
-      const text = e.target.result
-      const lua = parseRBXMText(text)
-      if(!lua || lua.trim() === ''){
-        statusEl.textContent = 'no items parsed'
-        outputEl.value = ''
-        return
-      }
-      outputEl.value = lua
-      lastFilename = (f.name.replace(/\.[^.]+$/,'') || 'Converted') + '.lua'
-      statusEl.textContent = 'ready'
-    }catch(err){
-      outputEl.value = ''
-      statusEl.textContent = 'parse error'
-    }
-  })
-  reader.readAsText(f)
-})
-
-downloadBtn.addEventListener('click', ()=>{
-  const txt = outputEl.value || ''
-  if(!txt.trim()){
-    statusEl.textContent = 'nothing to download'
-    return
-  }
-  downloadText(lastFilename, txt)
-})
-
-clearBtn.addEventListener('click', ()=>{
-  outputEl.value = ''
-  statusEl.textContent = 'cleared'
-})
 </script>
-</body>
-</html>    }
-  </script>
 </body>
 </html>
