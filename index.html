@@ -1,105 +1,173 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RBXM → Lua Converter</title>
-<style>
-:root{--bg1:#0f1724;--bg2:#1f2a44;--card:#0b1220;--accent:#7c5cff;--muted:#9aa4c0}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Helvetica,Arial;color:#e6eef8;background:linear-gradient(135deg,var(--bg1),#12213a);display:flex;align-items:center;justify-content:center;padding:28px}
-.wrap{width:100%;max-width:980px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:14px;padding:22px;box-shadow:0 12px 40px rgba(2,6,23,0.6);display:grid;grid-template-columns:420px 1fr;gap:18px}
-.header{grid-column:1 / -1;display:flex;align-items:center;gap:14px}
-.logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#4aa3ff);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:20px}
-.title{line-height:1}
-.title h1{font-size:18px;margin:0}
-.title p{margin:0;color:var(--muted);font-size:13px;margin-top:4px}
-.card{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.03);padding:16px;border-radius:12px;display:flex;flex-direction:column;gap:12px}
-.input{display:flex;flex-direction:column;gap:8px}
-.input input[type="text"]{padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit;font-size:14px;outline:none}
-.file-row{display:flex;gap:8px;align-items:center}
-.file-btn{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.03);cursor:pointer}
-.file-btn input{display:none}
-.actions{display:flex;gap:8px}
-.btn{flex:1;padding:12px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-weight:600;cursor:pointer}
-.btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:600}
-.output-area{grid-column:2 / 3;display:flex;flex-direction:column;gap:12px}
-textarea#output{width:100%;height:520px;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);background:#071028;color:#dceeff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;resize:vertical;outline:none;line-height:1.45}
-.footer{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;padding-top:6px}
-.small{font-size:12px;color:var(--muted)}
-.info{color:var(--muted);font-size:13px}
-@media (max-width:900px){.wrap{grid-template-columns:1fr}.output-area{grid-column:1 / -1}textarea#output{height:340px}}
-</style>
+  <meta charset="UTF-8">
+  <title>RBXM / Asset ID → Lua</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1c1c28;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: #2a2a3d;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      width: 450px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 15px;
+      color: #dcdcff;
+    }
+    input, button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input {
+      background: #3a3a52;
+      color: white;
+    }
+    button {
+      background: #8b5cf6;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #7c3aed;
+    }
+    textarea {
+      width: 100%;
+      height: 250px;
+      margin-top: 10px;
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      border-radius: 6px;
+      padding: 10px;
+      resize: none;
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="header">
-    <div class="logo">RBX</div>
-    <div class="title">
-      <h1>RBXM → Lua Converter</h1>
-      <p>Paste an Asset ID or upload an RBXM/RBXMX. Generated Lua rebuilds instances in Studio.</p>
-    </div>
+  <div class="container">
+    <h1>Roblox Asset / RBXM → Lua</h1>
+    <input type="text" id="assetId" placeholder="Enter Roblox Asset ID">
+    <button id="convertAsset">Convert Asset ID</button>
+
+    <input type="file" id="rbxmFile" accept=".rbxm,.rbxmx">
+    <button id="convertRbxm">Convert RBXM File</button>
+
+    <button id="downloadBtn">Download Lua</button>
+    <textarea id="output" readonly placeholder="Lua output will appear here..."></textarea>
   </div>
 
-  <div class="card">
-    <div class="input">
-      <label class="small">Asset ID or URL</label>
-      <input id="assetInput" type="text" placeholder="rbxassetid://123456 or https://www.roblox.com/library/123456/name">
-    </div>
+  <script>
+    const assetBtn = document.getElementById("convertAsset");
+    const rbxmBtn = document.getElementById("convertRbxm");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const output = document.getElementById("output");
 
-    <div class="input">
-      <label class="small">Upload .rbxm / .rbxmx</label>
-      <div class="file-row">
-        <label class="file-btn" id="chooseFileBtn">Choose file
-          <input id="fileInput" type="file" accept=".rbxm,.rbxmx">
-        </label>
-        <div class="info" id="fileName">no file chosen</div>
-      </div>
-    </div>
+    function luaEscape(str) {
+      return str.replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g,"\\n");
+    }
 
-    <div class="actions">
-      <button class="btn" id="convertAssetBtn">Convert Asset ID</button>
-      <button class="btn secondary" id="convertRBXMBtn">Convert RBXM</button>
-    </div>
+    function parseRBXM(xml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml, "text/xml");
 
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn secondary" id="clearBtn">Clear Output</button>
-      <button class="btn" id="downloadBtn">Download Lua</button>
-    </div>
-  </div>
+      let lua = [];
+      let id = 0;
 
-  <div class="output-area">
-    <label class="small">Lua Output</label>
-    <textarea id="output" spellcheck="false" readonly placeholder="Converted Lua will appear here"></textarea>
-  </div>
+      function parseItem(node, parentName) {
+        let className = node.getAttribute("class") || "Instance";
+        let name = "inst" + (++id);
+        lua.push(`local ${name} = Instance.new("${className}")`);
 
-  <div class="footer">
-    <div class="small">Paste the generated code into ServerScriptService or the Command Bar in Roblox Studio</div>
-    <div class="small" id="status">ready</div>
-  </div>
-</div>
+        node.querySelectorAll(":scope > Properties > *").forEach(prop => {
+          let propName = prop.tagName;
+          let val = prop.textContent;
 
-<script>
-const assetInput = document.getElementById('assetInput')
-const fileInput = document.getElementById('fileInput')
-const fileNameEl = document.getElementById('fileName')
-const convertAssetBtn = document.getElementById('convertAssetBtn')
-const convertRBXMBtn = document.getElementById('convertRBXMBtn')
-const outputEl = document.getElementById('output')
-const downloadBtn = document.getElementById('downloadBtn')
-const clearBtn = document.getElementById('clearBtn')
-const statusEl = document.getElementById('status')
-let lastFilename = 'Converted.lua'
+          if (propName === "string") {
+            lua.push(`${name}.${prop.getAttribute("name")} = "${luaEscape(val)}"`);
+          } else if (propName === "bool") {
+            lua.push(`${name}.${prop.getAttribute("name")} = ${val}`);
+          } else if (propName === "int" || propName === "float" || propName === "double") {
+            lua.push(`${name}.${prop.getAttribute("name")} = ${val}`);
+          } else if (propName === "Content") {
+            lua.push(`${name}.${prop.getAttribute("name")} = "${val}"`);
+          } else if (propName === "BinaryString" && node.getAttribute("class").includes("Script")) {
+            lua.push(`${name}.Source = [[${val}]]`);
+          }
+        });
 
-fileInput.addEventListener('change', ()=> {
-  const f = fileInput.files[0]
-  fileNameEl.textContent = f ? f.name : 'no file chosen'
-})
+        if (parentName) {
+          lua.push(`${name}.Parent = ${parentName}`);
+        }
 
-function extractAssetId(text){
-  if(!text) return null
-  const m = text.match(/\d{5,}/)
+        node.querySelectorAll(":scope > Item").forEach(child => {
+          parseItem(child, name);
+        });
+
+        return name;
+      }
+
+      doc.querySelectorAll("roblox > Item").forEach(item => {
+        parseItem(item, null);
+      });
+
+      return lua.join("\n");
+    }
+
+    assetBtn.onclick = () => {
+      const assetId = document.getElementById("assetId").value.trim();
+      if (!assetId) {
+        alert("Enter an Asset ID!");
+        return;
+      }
+      output.value = `local model = game:GetObjects("rbxassetid://${assetId}")[1]\nmodel.Parent = workspace`;
+    };
+
+    rbxmBtn.onclick = () => {
+      const file = document.getElementById("rbxmFile").files[0];
+      if (!file) {
+        alert("Upload an RBXM/RBXMX file!");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        output.value = parseRBXM(e.target.result);
+      };
+      reader.readAsText(file);
+    };
+
+    downloadBtn.onclick = () => {
+      if (!output.value) {
+        alert("Nothing to download!");
+        return;
+      }
+      const blob = new Blob([output.value], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "Converted.lua";
+      link.click();
+    };
+  </script>
+</body>
+</html>  const m = text.match(/\d{5,}/)
   return m ? m[0] : null
 }
 
