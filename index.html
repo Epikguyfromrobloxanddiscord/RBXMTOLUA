@@ -3,32 +3,56 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Asset ID → Lua</title>
+<title>Roblox Tools</title>
 <style>
 body {
   margin:0;
   font-family:Arial, sans-serif;
   background:#0d0f18;
   color:#fff;
-  display:flex;
-  justify-content:center;
-  align-items:center;
   height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+nav {
+  display:flex;
+  background:#1a1f2e;
+}
+nav button {
+  flex:1;
+  padding:14px;
+  border:none;
+  background:#1a1f2e;
+  color:#9aa4c0;
+  font-size:1rem;
+  cursor:pointer;
+  transition:0.2s;
+}
+nav button.active {
+  background:#7c5cff;
+  color:#fff;
 }
 .container {
+  flex:1;
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+.container.active { display:flex; }
+.card {
   background:#1a1f2e;
-  padding:30px;
+  padding:20px;
   border-radius:16px;
   box-shadow:0 8px 20px rgba(0,0,0,.6);
   width:340px;
   text-align:center;
 }
 h1 {
-  font-size:1.4rem;
+  font-size:1.3rem;
   margin-bottom:20px;
   color:#a78bfa;
 }
-input, button {
+input, button, textarea {
   width:100%;
   padding:10px;
   margin:6px 0;
@@ -36,9 +60,10 @@ input, button {
   border-radius:8px;
   font-size:1rem;
 }
-input {
+input, textarea {
   background:#111628;
   color:#fff;
+  resize:none;
 }
 button {
   background:#7c5cff;
@@ -49,37 +74,63 @@ button {
 button:hover {
   background:#6b4ef5;
 }
-textarea {
-  width:100%;
-  height:150px;
-  margin-top:12px;
+.chat-box {
+  height:200px;
+  overflow-y:auto;
   background:#111628;
-  color:#fff;
-  border:none;
-  border-radius:8px;
   padding:10px;
-  resize:none;
+  border-radius:8px;
+  text-align:left;
   font-family:monospace;
-  font-size:0.9rem;
+  margin-bottom:10px;
 }
+.chat-msg {
+  margin:6px 0;
+  padding:6px;
+  border-radius:6px;
+  white-space:pre-wrap;
+}
+.user { background:#2c2f44; color:#fff; }
+.bot { background:#3a2f55; color:#aef; }
 </style>
 </head>
 <body>
-  <div class="container">
+
+<nav>
+  <button class="active" onclick="showTab('asset')">Asset → Lua</button>
+  <button onclick="showTab('fixer')">Script Fixer Chat</button>
+</nav>
+
+<div id="asset" class="container active">
+  <div class="card">
     <h1>Asset ID → Lua</h1>
     <input type="text" id="assetId" placeholder="Enter Asset ID">
     <button onclick="convert()">Convert</button>
     <button onclick="downloadLua()">Download Lua</button>
     <textarea id="output" readonly></textarea>
   </div>
+</div>
+
+<div id="fixer" class="container">
+  <div class="card">
+    <h1>Script Fixer</h1>
+    <div class="chat-box" id="chat"></div>
+    <textarea id="scriptInput" placeholder="Paste Lua code here"></textarea>
+    <button onclick="fixScript()">Fix Script</button>
+  </div>
+</div>
 
 <script>
+function showTab(tab) {
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".container").forEach(c=>c.classList.remove("active"));
+  document.querySelector(`nav button[onclick*="${tab}"]`).classList.add("active");
+  document.getElementById(tab).classList.add("active");
+}
+
 function convert() {
   const id = document.getElementById("assetId").value.trim();
-  if (!id) {
-    alert("Enter an Asset ID");
-    return;
-  }
+  if (!id) return alert("Enter an Asset ID");
   const lua = `local model = game:GetObjects("rbxassetid://${id}")[1]
 model.Parent = workspace`;
   document.getElementById("output").value = lua;
@@ -87,11 +138,8 @@ model.Parent = workspace`;
 
 function downloadLua() {
   const content = document.getElementById("output").value;
-  if (!content) {
-    alert("Nothing to download. Convert first!");
-    return;
-  }
-  const blob = new Blob([content], { type: "text/plain" });
+  if (!content) return alert("Nothing to download. Convert first!");
+  const blob = new Blob([content], { type:"text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -101,6 +149,26 @@ function downloadLua() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+function addChat(msg, sender) {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "chat-msg " + sender;
+  div.textContent = msg;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function fixScript() {
+  const code = document.getElementById("scriptInput").value.trim();
+  if (!code) return;
+  addChat(code, "user");
+  // Fake fixer: just reformat indentation (demo only)
+  const fixed = code.replace(/\t/g,"  ");
+  addChat(fixed, "bot");
+  document.getElementById("scriptInput").value = "";
+}
 </script>
+
 </body>
 </html>
